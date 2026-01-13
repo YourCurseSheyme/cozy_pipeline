@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cozy_llm"
+version = "0.1.0"
+description = "High-perfomance local LLM evaluation pipeline"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "pandas>=2.1.0",
+    "httpx>=0.25.0",
+    "tqdm>=4.66.0"
+]
+
+[project.scripts]
+llm-eval = "src.llm_evaluator.interface.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "mypy>=1.8.0",
+    "ruff>=0.1.0"
+]
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+disallow_untyped_defs = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F", "I", "B", "UP"]
+# E: Error, F: Pyflakes, I: Isort, B: Bugbear, UP: PyUpgrade
