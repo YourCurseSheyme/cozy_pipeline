@@ -1,8 +1,8 @@
-import time
 import asyncio
+import time
 import httpx
 import logging
-from typing import Optional, Self, Any
+from typing import Optional, Self, Any, Dict
 
 from src.llm_evaluator.config import settings, Settings
 from src.llm_evaluator.domain.models import LLMResponse
@@ -12,12 +12,20 @@ logger = logging.getLogger(__name__)
 
 class OllamaClient:
     def __init__(self, config: Settings = settings) -> None:
-        self.base_url = settings.OLLAMA_BASE_URL
-        self.model = settings.MODEL_NAME
-        self.timeout = settings.HTTP_TIMEOUT_SECONDS
-        self.temperature = config.LLM_TEMPERATURE
-        self.max_tokens = config.LLM_MAX_TOKENS
-        self.client: Optional[httpx.AsyncClient] = None
+        self.base_url = config.OLLAMA_BASE_URL
+        self.model = config.MODEL_NAME
+        self.timeout = config.HTTP_TIMEOUT_SECONDS
+
+        self.default_options = {
+            "temperature": config.LLM_TEMPERATURE,
+            "num_predict": config.LLM_MAX_TOKENS,
+            "num_ctx": 4096,
+            "num_thread": config.OLLAMA_NUM_THREAD,
+            "repeat_penalty": config.OLLAMA_REPEAT_PENALTY,
+            "top_p": config.OLLAMA_TOP_P,
+            "stop": ["<|endoftext|>", "User:", "System:"]
+        }
+        self._client: Optional[httpx.AsyncClient] = None
 
     async def __aenter__(self) -> Self:
         self._client = httpx.AsyncClient(
@@ -30,26 +38,24 @@ class OllamaClient:
         if self._client:
             await self._client.aclose()
 
-    async def generate(self, prompt: str) -> LLMResponse:
+    async def generate(self, prompt: str, options_override: Optional[Dict[str, Any]] = None) -> LLMResponse:
         if self._client is None:
             raise RuntimeError("OllamaClient must be used within an 'async with' block.")
 
         url = f"{self.base_url}/api/generate"
 
+        final_options = self.default_options.copy()
+        if options_override:
+            final_options.update(options_override)
+
         payload = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,
-            "options": {
-                "temperature": self.temperature,
-                "num_predict": self.max_tokens,
-                "num_ctx": 4096,
-                "repeat_penalty": 1.1,
-                "stop": ["<|endoftext|>", "User:"]
-            }
+            "options": final_options
         }
 
-        max_retries = 3
+        max_retries = 2
         for attempt in range(max_retries):
             start_time = time.perf_counter()
             try:
@@ -67,9 +73,11 @@ class OllamaClient:
                     client_latency_ms=latency_ms
                 )
             except (httpx.ReadTimeout, httpx.ConnectError) as e:
-                logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {e}. Retrying...")
+                logger.warning(f"Attempt {attempt + 1}/{max_retries} failed during generation: {e}")
                 if attempt == max_retries - 1:
-                    raise LLMConnectionError(f"Failed after {max_retries} attempts: {e}")
-                await asyncio.sleep(5)
+                    return LLMResponse(raw_content="", client_latency_ms=0.0)
+                await asyncio.sleep(1)
             except httpx.HTTPStatusError as e:
                 raise LLMConnectionError(f"Ollama API Error: {e.response.status_code}")
+
+        return LLMResponse(raw_content="", client_latency_ms=0.0)
