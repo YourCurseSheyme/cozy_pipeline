@@ -4,5 +4,4 @@
 
 dist/
 build/
-!/data/results.csv
-!/build/
+data/results.csv
