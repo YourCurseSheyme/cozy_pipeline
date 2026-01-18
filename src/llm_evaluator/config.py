@@ -4,11 +4,15 @@ from typing import Dict, Tuple, List, Union
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_CURRENT_FILE = Path(__file__).resolve()
+PROJECT_ROOT = _CURRENT_FILE.parent.parent.parent
+DATA_DIR = PROJECT_ROOT / "data"
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("llm_evaluator.config")
 
-_env_files: List[Union[str, Path]] = [".env"]
-_optimized_path = Path(".env.optimized")
+_env_files: List[Union[str, Path]] = [PROJECT_ROOT / ".env"]
+_optimized_path = PROJECT_ROOT / ".env.optimized"
 
 if _optimized_path.exists():
     _env_files.append(_optimized_path)
@@ -31,8 +35,8 @@ class Settings(BaseSettings):
     OLLAMA_REPEAT_PENALTY: float = 1.1
     OLLAMA_TOP_P: float = 1.0
 
-    DEFAULT_INPUT_FILE: str = "data/input.csv"
-    DEFAULT_OUTPUT_FILE: str = "data/results.csv"
+    DEFAULT_INPUT_FILE: str =  str(DATA_DIR / "input.csv")
+    DEFAULT_OUTPUT_FILE: str = str(DATA_DIR / "results.csv")
 
     KERNEL_BOOTLOADER: str = ("""
         ROLE

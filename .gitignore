@@ -5,3 +5,4 @@
 dist/
 build/
 data/results.csv
+.env.optimized

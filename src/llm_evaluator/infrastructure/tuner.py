@@ -10,6 +10,7 @@ from src.llm_evaluator.domain.models import EvaluationTask
 from src.llm_evaluator.infrastructure.ollama import OllamaClient
 from src.llm_evaluator.service.scorer import ResponseScorer
 from src.llm_evaluator.config import settings
+from src.llm_evaluator.config import _optimized_path
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ class AutoTuner:
 
         return best_params
 
-    def save_recommendations(self, params: Dict[str, Any], path: str = ".env.optimized"):
+    def save_recommendations(self, params: Dict[str, Any], path: str = _optimized_path):
         try:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(f"# --- COZY-LLM AUTO-TUNED CONFIG ---\n")

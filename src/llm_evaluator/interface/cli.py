@@ -31,7 +31,12 @@ async def _run_tuner(input_path: str) -> None:
     tuner.save_recommendations(best_params)
 
 async def _run_pipeline(input_path: str, output_path: str) -> None:
+    if not output_path:
+        output_path = settings.DEFAULT_OUTPUT_FILE
+        logger.warning(f"Output path not specified. Using default: {output_path}")
+
     pipeline = EvaluationPipeline()
+
     if not Path(input_path).exists():
         logger.critical(f"Input file not found: {input_path}")
         sys.exit(1)
@@ -51,11 +56,29 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     eval_parser = subparsers.add_parser("eval", help="Run evaluation pipeline")
-    eval_parser.add_argument("input_file", type=str)
-    eval_parser.add_argument("-o", "--output", type=str, default=settings.DEFAULT_OUTPUT_FILE)
+    eval_parser.add_argument(
+        "input_file",
+        type=str,
+        nargs="?",
+        default=settings.DEFAULT_INPUT_FILE,
+        help=f"Path to input CSV (default: {settings.DEFAULT_INPUT_FILE})"
+    )
+    eval_parser.add_argument(
+        "-o", "--output",
+        dest="output_file",
+        type=str,
+        default=settings.DEFAULT_OUTPUT_FILE,
+        help=f"Path to result CSV (default: {settings.DEFAULT_OUTPUT_FILE})"
+    )
 
     tune_parser = subparsers.add_parser("tune", help="Run auto-tuner")
-    tune_parser.add_argument("input_file", type=str)
+    tune_parser.add_argument(
+        "input_file",
+        type=str,
+        nargs='?',
+        default=settings.DEFAULT_INPUT_FILE,
+        help="Path to input CSV"
+    )
 
     args = parser.parse_args()
 
@@ -65,11 +88,12 @@ def main() -> None:
     try:
         if args.command == "tune":
             asyncio.run(_run_tuner(args.input_file))
+        elif args.command == "eval":
+            asyncio.run(_run_pipeline(args.input_file, args.output_file))
         else:
-            input_f = getattr(args, "input_file", None)
-            output_f = getattr(args, "output_file", None)
-            if input_f:
-                asyncio.run(_run_pipeline(input_f, output_f))
+            if hasattr(args, "input_file") and args.input_file:
+                out = getattr(args, "output_file", settings.DEFAULT_OUTPUT_FILE)
+                asyncio.run(_run_pipeline(args.input_file, out))
             else:
                 parser.print_help()
     except KeyboardInterrupt:
